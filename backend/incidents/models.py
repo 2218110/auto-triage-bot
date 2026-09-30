@@ -1,5 +1,5 @@
 from django.db import models
-
+from django.contrib.postgres.indexes import GinIndex
 # Create your models here.
 class Queue(models.Model):
     name = models.CharField(max_length=100, unique= True)
@@ -14,6 +14,17 @@ class KnowledgeRecord(models.Model):
     is_verified = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+
+    class Meta:
+        indexes = [
+
+            GinIndex(
+                fields=['title',],
+                name= "kb_title_trgm_idx",
+                opclasses = ['gin_trgm_ops'],
+            )
+        ]
 
     def __str__(self):
         return self.title

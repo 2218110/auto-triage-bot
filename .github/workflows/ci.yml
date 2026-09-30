@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: auto_triage
+          POSTGRES_USER: triage_user
+          POSTGRES_PASSWORD: triage_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U triage_user -d auto_triage"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r backend/requirements.txt
+
+      - name: Run migrations
+        working-directory: backend
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_NAME: auto_triage
+          DB_USER: triage_user
+          DB_PASSWORD: triage_password
+        run: python manage.py migrate
+
+      - name: Run tests
+        working-directory: backend
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_NAME: auto_triage
+          DB_USER: triage_user
+          DB_PASSWORD: triage_password
+        run: python manage.py test
