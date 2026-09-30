@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# Virtual environment
+venv/
+.venv/
+
+# Environment variables / secrets
+.env
+
+# IDE
+.vscode/
+.idea/
+
+# Django
+*.log
+
+# Docker/PostgreSQL local data
+postgres_data/
+
+# Test cache
+.pytest_cache/
+
+# Seed data
+backend/data/*.csv

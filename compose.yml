@@ -1,0 +1,26 @@
+services:
+
+  web:
+    build:
+      context: .
+      dockerfile: DockerFile
+    container_name: auto_triange_web
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+
+  db:
+    image: postgres:16
+    container_name: auto_triage_db
+    environment:
+      POSTGRES_DB: auto_triage
+      POSTGRES_USER: triage_user
+      POSTGRES_PASSWORD: triage_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
