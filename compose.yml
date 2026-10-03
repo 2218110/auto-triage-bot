@@ -22,5 +22,18 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
+  test_db:
+    image: postgres:16
+    container_name: auto_triage_test_db
+    environment:
+      POSTGRES_DB: auto_triage_test
+      POSTGRES_USER: triage_test_user
+      POSTGRES_PASSWORD: triage_test_password
+    ports:
+      - "5433:5432"
+    volumes:
+      - test_postgres_data:/var/lib/postgresql/data
+
 volumes:
   postgres_data:
+  test_postgres_data:
