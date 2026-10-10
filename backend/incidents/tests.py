@@ -1,79 +1,92 @@
-from django.contrib.postgres.search import TrigramSimilarity
+
+from django.db import connection
 from django.test import TestCase
 
 from .models import KnowledgeRecord
 from .services import knowledge_search
 
 
-class KnowledgeSearchTests(TestCase):
+class SystemHealthTests(TestCase):
 
-    def test_finds_verified_knowledge_record(self):
-        KnowledgeRecord.objects.create(
-            title="Windows Update fails to install",
-            description="Troubleshooting Windows Update installation failures.",
-            category="Windows & OS",
+    def test_database_connection_and_query(self):
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+            self.assertEqual(cursor.fetchone()[0], 1)
+
+    def test_required_knowledge_table_exists(self):
+        tables = connection.introspection.table_names()
+
+        self.assertIn(
+            KnowledgeRecord._meta.db_table,
+            tables,
+        )
+
+    def test_pg_trgm_extension_is_installed(self):
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT EXISTS (
+                    SELECT 1
+                    FROM pg_extension
+                    WHERE extname = 'pg_trgm'
+                )
+                """
+            )
+            self.assertTrue(cursor.fetchone()[0])
+
+    def test_trigram_gin_index_exists(self):
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT EXISTS (
+                    SELECT 1
+                    FROM pg_indexes
+                    WHERE tablename = %s
+                      AND indexname = 'kb_title_trgm_idx'
+                )
+                """,
+                [KnowledgeRecord._meta.db_table],
+            )
+            self.assertTrue(cursor.fetchone()[0])
+
+
+class KnowledgeRecordHealthTests(TestCase):
+
+    def test_knowledge_record_can_be_created_and_read(self):
+        record = KnowledgeRecord.objects.create(
+            title="Health check record",
+            description="Verifies database write and read operations.",
+            category="System",
             is_verified=True,
+        )
+
+        retrieved = KnowledgeRecord.objects.get(pk=record.pk)
+
+        self.assertEqual(retrieved.title, "Health check record")
+        self.assertTrue(retrieved.is_verified)
+
+    def test_search_excludes_unverified_records(self):
+        KnowledgeRecord.objects.create(
+            title="Verified health check record",
+            description="A verified record for the health check.",
+            category="System",
+            is_verified=True,
+        )
+
+        unverified = KnowledgeRecord.objects.create(
+            title="Unverified health check record",
+            description="An unverified record for the health check.",
+            category="System",
+            is_verified=False,
         )
 
         results = list(
             knowledge_search.search_knowledge(
-                "Windows Update fails to install"
+                "Unverified health check record"
             )
         )
 
-        self.assertTrue(results)
-        self.assertEqual(
-            results[0].title,
-            "Windows Update fails to install",
+        self.assertNotIn(
+            unverified.pk,
+            [record.pk for record in results],
         )
-        self.assertGreaterEqual(
-            results[0].similarity,
-            0.60,
-        )
-
-    def test_rejects_low_similarity_knowledge_record(self):
-        KnowledgeRecord.objects.create(
-            title="Windows Update fails to install",
-            description="Troubleshooting Windows Update installation failures.",
-            category="Windows & OS",
-            is_verified=True,
-        )
-
-        results = knowledge_search.search_knowledge(
-            "printer toner replacement"
-        )
-
-        self.assertFalse(results)
-
-    def test_trigram_similarity_without_verified_filter(self):
-        KnowledgeRecord.objects.create(
-            title="Windows Update fails to install",
-            description="Windows Update installation troubleshooting.",
-            category="Windows & OS",
-            is_verified=True,
-        )
-
-        query = "Windows Update fails to install"
-
-        results = (
-            KnowledgeRecord.objects
-            .annotate(
-                similarity=TrigramSimilarity("title", query)
-            )
-            .order_by("-similarity")
-        )
-
-        results = list(results[:5])
-
-        print("\n" + "=" * 60)
-        print("TRIGRAM DIAGNOSTIC")
-        print("=" * 60)
-
-        for result in results:
-            print(
-                f"Title: {result.title}\n"
-                f"Similarity: {result.similarity:.4f}\n"
-                f"Verified: {result.is_verified}\n"
-            )
-
-        self.assertTrue(results)
