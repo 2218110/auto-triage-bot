@@ -14,7 +14,7 @@ class Command(BaseCommand):
         csv_path = os.path.join(
             settings.BASE_DIR,
             "data",
-            "it_kb_2000.csv"
+            "it_kb_4000_real_issues.csv"
         )
 
         self.stdout.write(

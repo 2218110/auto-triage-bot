@@ -11,7 +11,7 @@ class KnowledgeRecord(models.Model):
     title = models.CharField(max_length=200)
     description = models.TextField()    
     category = models.CharField(max_length=100)
-    is_verified = models.BooleanField(default=False)
+    is_verified = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -22,6 +22,11 @@ class KnowledgeRecord(models.Model):
             GinIndex(
                 fields=['title',],
                 name= "kb_title_trgm_idx",
+                opclasses = ['gin_trgm_ops'],
+            ),
+            GinIndex(
+                fields=['description',],
+                name= "kb_desc_trgm_idx",
                 opclasses = ['gin_trgm_ops'],
             )
         ]
